@@ -1,0 +1,1 @@
+from libretranslate import translate_text

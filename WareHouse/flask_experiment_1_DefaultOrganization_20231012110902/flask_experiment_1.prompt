@@ -1,0 +1,1 @@
+Create a web application that uses python and Flask to query the libretranslate github project to translate text to english. The front-end must also have a field to accept files to translate. Include tests that are made with pytest.
