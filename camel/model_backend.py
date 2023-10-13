@@ -47,7 +47,7 @@ class OpenAIModel(ModelBackend):
         super().__init__()
         self.model_type = model_type
         self.model_config_dict = model_config_dict
-        
+
     @retry(tries=-1, delay=0, max_delay=None, backoff=1, jitter=0)
     def run(self, *args, **kwargs) -> Dict[str, Any]:
         string = "\n".join([message["content"] for message in kwargs["messages"]])
@@ -67,16 +67,25 @@ class OpenAIModel(ModelBackend):
         }
         num_max_token = num_max_token_map[self.model_type.value]
         num_max_completion_tokens = num_max_token - num_prompt_tokens
-        self.model_config_dict['max_tokens'] = num_max_completion_tokens
-        response = openai.ChatCompletion.create(*args, **kwargs,
-                                                model=self.model_type.value,
-                                                **self.model_config_dict)
+        self.model_config_dict["max_tokens"] = num_max_completion_tokens
+        try:
+            response = openai.ChatCompletion.create(
+                *args, **kwargs, model=self.model_type.value, **self.model_config_dict
+            )
+        except Exception as e:
+            print(f"some error happened, you probably failed to connect to OPEN-AI or you don't have credits")
+            print(f"ERROR MESSAGE {e}")
+            raise e
 
         log_and_print_online(
             "**[OpenAI_Usage_Info Receive]**\nprompt_tokens: {}\ncompletion_tokens: {}\ntotal_tokens: {}\n".format(
-                response["usage"]["prompt_tokens"], response["usage"]["completion_tokens"],
-                response["usage"]["total_tokens"]))
+                response["usage"]["prompt_tokens"],
+                response["usage"]["completion_tokens"],
+                response["usage"]["total_tokens"],
+            )
+        )
         if not isinstance(response, Dict):
+            print("Unexpected return from OpenAI API")
             raise RuntimeError("Unexpected return from OpenAI API")
         return response
 
@@ -93,10 +102,7 @@ class StubModel(ModelBackend):
         return dict(
             id="stub_model_id",
             usage=dict(),
-            choices=[
-                dict(finish_reason="stop",
-                     message=dict(content=ARBITRARY_STRING, role="assistant"))
-            ],
+            choices=[dict(finish_reason="stop", message=dict(content=ARBITRARY_STRING, role="assistant"))],
         )
 
 
@@ -111,14 +117,12 @@ class ModelFactory:
     def create(model_type: ModelType, model_config_dict: Dict) -> ModelBackend:
         default_model_type = ModelType.GPT_3_5_TURBO
 
-        if model_type in {
-            ModelType.GPT_3_5_TURBO, ModelType.GPT_4, ModelType.GPT_4_32k,
-            None
-        }:
+        if model_type in {ModelType.GPT_3_5_TURBO, ModelType.GPT_4, ModelType.GPT_4_32k, None}:
             model_class = OpenAIModel
         elif model_type == ModelType.STUB:
             model_class = StubModel
         else:
+            print("Error in model_backend.py, unknown model")
             raise ValueError("Unknown model")
 
         if model_type is None:
