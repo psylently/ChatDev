@@ -1,0 +1,9 @@
+<div>
+  <h1>File Translator</h1>
+  <input type="file" (change)="onFileSelected($event)" accept=".txt" />
+  <button (click)="onUpload()">Translate</button>
+  <div *ngIf="translatedText">
+    <h2>Translated Text:</h2>
+    <p>{{ translatedText }}</p>
+  </div>
+</div>
